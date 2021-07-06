@@ -28,33 +28,35 @@ The source code and build products are mounted externally in the following locat
 
 ## Examples
 
-### Building syslog-ng from source using Ubuntu Xenial
-> Assume that we have cloned syslog-ng's source into the `$HOME/syslog-ng` directory.
-
-The following commands starts a container mounted with the source:
+### Building syslog-ng from tarball using a supported distribution (e. g. Ubuntu Focal)
 
 ```bash
-$ dbld/rules shell-ubuntu-xenial
+$ dbld/rules shell-ubuntu-focal
 
-
-Welcome to the syslog-ng developer's shell... (ubuntu-xenial)
+Welcome to the syslog-ng developer's shell... (ubuntu-focal)
 
 You can find the source in /source, you can build the source using:
 
-	$ cd /build
-	$ /source/configure
-	$ make
+        $ cd /build
+        $ /source/configure
+        $ make
 If configure is not yet available, run '/dbld/bootstrap' (in the container) or
-'./dbld/rules bootstrap' (on the host) or manually execute autogen.sh in the
+'./dbld/rules bootstrap' (on the host) or manually execute autogen.sh in the 
 source dir.
 
-whoami@host:/source$
+NOTE: the 'devshell' dbld image is more developer friendly, you might want to use that
+
+
+$ wget https://github.com/syslog-ng/syslog-ng/releases/download/syslog-ng-3.32.1/syslog-ng-3.32.1.tar.gz
+$ tar -xzvf syslog-ng-3.32.1.tar.gz
+$ ./syslog-ng-3.32.1/configure
+$ make
 ```
 
 You can also build a DEB using:
 
 ```bash
-$ dbld/rules deb-ubuntu-xenial
+$ dbld/rules deb-ubuntu-focal
 ```
 
 You can find the resulting debs in `$HOME/syslog-ng/dbld/build`.
