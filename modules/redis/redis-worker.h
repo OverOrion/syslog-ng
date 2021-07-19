@@ -40,6 +40,9 @@ typedef struct _RedisDestWorker
   gchar **argv;
   size_t *argvlen;
 
+  /*Batch mode*/
+  size_t num_of_messages_waiting_for_reply;
+
 } RedisDestWorker;
 
 LogThreadedDestWorker *redis_worker_new(LogThreadedDestDriver *owner, gint worker_index);
