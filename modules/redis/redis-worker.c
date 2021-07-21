@@ -38,9 +38,8 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
   RedisDestWorker *self = (RedisDestWorker *) s;
   RedisDriver *owner = (RedisDriver *) self->super.owner;
   LogThreadedResult retval = LTR_NOT_CONNECTED;
-
-
-  if(self->super.batch_size == 0)
+  
+  if(owner->super.batch_lines == 0)
     {
       return LTR_SUCCESS;
     }
@@ -50,17 +49,24 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
       return LTR_RETRY;
     }
 
+  if(self->c == NULL || self->c->err)
+  {
+    self->num_of_messages_waiting_for_reply = 0;
+    return LTR_ERROR;
+  }
+
   redisReply *reply;
   while (self->num_of_messages_waiting_for_reply > 0)
     {
+      --self->num_of_messages_waiting_for_reply;
       if(redisGetReply(self->c, (void **)&reply) != REDIS_OK)
         {
-          retval = LTR_ERROR;
+          self->num_of_messages_waiting_for_reply = 0;
+          return LTR_ERROR;
         }
-      --self->num_of_messages_waiting_for_reply;
       freeReplyObject(reply);
     }
-  return retval;
+  return LTR_SUCCESS;
 }
 
 static inline void _fill_template(RedisDestWorker *self, LogMessage *msg, LogTemplate *template, gchar **str,
@@ -136,7 +142,7 @@ redis_worker_insert_batch(LogThreadedDestWorker *s, LogMessage *msg)
 
   _add_message_to_batch(self, msg);
 
-  if(self->c == NULL || self->c->err)
+   if(self->c == NULL || self->c->err)
     {
       msg_error("REDIS server error, suspending",
                 evt_tag_str("driver", owner->super.super.super.id),
@@ -144,15 +150,16 @@ redis_worker_insert_batch(LogThreadedDestWorker *s, LogMessage *msg)
                 evt_tag_str("error", self->c->errstr),
                 evt_tag_int("time_reopen", self->super.time_reopen));
       scratch_buffers_reclaim_marked(marker);
+      self->num_of_messages_waiting_for_reply = 0;
       return LTR_ERROR;
     }
 
-  msg_debug("REDIS command sent",
+  msg_debug("REDIS command appended",
             evt_tag_str("driver", owner->super.super.super.id),
             evt_tag_str("command", _argv_to_string(self)));
 
   scratch_buffers_reclaim_marked(marker);
-  return LTR_SUCCESS;
+  return LTR_QUEUED;
 }
 
 static LogThreadedResult
@@ -214,11 +221,14 @@ redis_worker_thread_init(LogThreadedDestWorker *d)
 static void
 redis_worker_disconnect(LogThreadedDestWorker *s)
 {
+  msg_error("disconnected worker");
   RedisDestWorker *self = (RedisDestWorker *)s;
 
+  /*
   if (self->c)
     redisFree(self->c);
   self->c = NULL;
+  */
 }
 
 static void
@@ -228,7 +238,10 @@ redis_worker_thread_deinit(LogThreadedDestWorker *d)
 
   g_free(self->argv);
   g_free(self->argvlen);
-  redis_worker_disconnect(d);
+  //redis_worker_disconnect(d);
+   if (self->c)
+    redisFree(self->c);
+  self->c = NULL;
 
   log_threaded_dest_worker_deinit_method(d);
 }
@@ -298,16 +311,28 @@ authenticate_to_redis(RedisDestWorker *self, const gchar *password)
 static gboolean
 redis_worker_connect(LogThreadedDestWorker *s)
 {
+  msg_error("connect worker");
   RedisDestWorker *self = (RedisDestWorker *)s;
   RedisDriver *owner = (RedisDriver *) self->super.owner;
 
   if (self->c && check_connection_to_redis(self))
+    {msg_error("connect worker branch");
     return TRUE;
+    }
+  else if(self->c)
+  {
+    msg_error("reconnect worker branch");
+    redisReconnect(self->c);
+  }
+  else
+  {
+    self->c = redisConnectWithTimeout(owner->host, owner->port, owner->timeout);
 
-  if (self->c)
-    redisFree(self->c);
+  }
 
-  self->c = redisConnectWithTimeout(owner->host, owner->port, owner->timeout);
+  //if (self->c)
+    //redisFree(self->c);
+
 
   if (self->c == NULL || self->c->err)
     {
