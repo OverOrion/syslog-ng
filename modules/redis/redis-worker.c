@@ -120,13 +120,6 @@ _argv_to_string(RedisDestWorker *self)
   return full_command->str;
 }
 
-static void
-_add_message_to_batch(RedisDestWorker *self, LogMessage *msg)
-{
-  redisAppendCommandArgv(self->c, self->argc, (const gchar **)self->argv, self->argvlen);
-  ++self->num_of_messages_waiting_for_reply;
-}
-
 static LogThreadedResult
 redis_worker_insert_batch(LogThreadedDestWorker *s, LogMessage *msg)
 {
@@ -140,9 +133,9 @@ redis_worker_insert_batch(LogThreadedDestWorker *s, LogMessage *msg)
 
   _fill_argv_from_template_list(self, msg);
 
-  _add_message_to_batch(self, msg);
+  int retval = redisAppendCommandArgv(self->c, self->argc, (const gchar **)self->argv, self->argvlen);
 
-   if(self->c == NULL || self->c->err)
+   if(self->c == NULL || self->c->err || retval != REDIS_OK)
     {
       msg_error("REDIS server error, suspending",
                 evt_tag_str("driver", owner->super.super.super.id),
@@ -153,7 +146,7 @@ redis_worker_insert_batch(LogThreadedDestWorker *s, LogMessage *msg)
       self->num_of_messages_waiting_for_reply = 0;
       return LTR_ERROR;
     }
-
+  ++self->num_of_messages_waiting_for_reply;
   msg_debug("REDIS command appended",
             evt_tag_str("driver", owner->super.super.super.id),
             evt_tag_str("command", _argv_to_string(self)));
@@ -224,11 +217,9 @@ redis_worker_disconnect(LogThreadedDestWorker *s)
   msg_error("disconnected worker");
   RedisDestWorker *self = (RedisDestWorker *)s;
 
-  /*
   if (self->c)
     redisFree(self->c);
   self->c = NULL;
-  */
 }
 
 static void
@@ -238,10 +229,7 @@ redis_worker_thread_deinit(LogThreadedDestWorker *d)
 
   g_free(self->argv);
   g_free(self->argvlen);
-  //redis_worker_disconnect(d);
-   if (self->c)
-    redisFree(self->c);
-  self->c = NULL;
+  redis_worker_disconnect(d);
 
   log_threaded_dest_worker_deinit_method(d);
 }
@@ -316,8 +304,9 @@ redis_worker_connect(LogThreadedDestWorker *s)
   RedisDriver *owner = (RedisDriver *) self->super.owner;
 
   if (self->c && check_connection_to_redis(self))
-    {msg_error("connect worker branch");
-    return TRUE;
+    {
+      msg_error("connect worker branch");
+      return TRUE;
     }
   else if(self->c)
   {
@@ -329,10 +318,6 @@ redis_worker_connect(LogThreadedDestWorker *s)
     self->c = redisConnectWithTimeout(owner->host, owner->port, owner->timeout);
 
   }
-
-  //if (self->c)
-    //redisFree(self->c);
-
 
   if (self->c == NULL || self->c->err)
     {
