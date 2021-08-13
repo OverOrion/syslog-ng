@@ -41,18 +41,19 @@ struct _SocketOptions
   gint so_broadcast;
   gint so_keepalive;
   gboolean so_reuseport;
-  gboolean (*setup_socket)(SocketOptions *s, gint sock, GSockAddr *bind_addr, AFSocketDirection dir);
+  gboolean (*setup_socket)(SocketOptions *s, gint sock, gint sock_type, GSockAddr *bind_addr, AFSocketDirection dir);
   void (*free)(gpointer s);
 };
 
-gboolean socket_options_setup_socket_method(SocketOptions *self, gint fd, GSockAddr *bind_addr, AFSocketDirection dir);
+gboolean socket_options_setup_socket_method(SocketOptions *self, gint fd, gint sock_type, GSockAddr *bind_addr,
+                                            AFSocketDirection dir);
 void socket_options_init_instance(SocketOptions *self);
 SocketOptions *socket_options_new(void);
 
 static inline gboolean
-socket_options_setup_socket(SocketOptions *s, gint sock, GSockAddr *bind_addr, AFSocketDirection dir)
+socket_options_setup_socket(SocketOptions *s, gint sock, gint sock_type, GSockAddr *bind_addr, AFSocketDirection dir)
 {
-  return s->setup_socket(s, sock, bind_addr, dir);
+  return s->setup_socket(s, sock, sock_type, bind_addr, dir);
 }
 
 static inline void

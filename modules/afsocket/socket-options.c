@@ -111,7 +111,8 @@ _setup_reuseport(gint fd)
 }
 
 gboolean
-socket_options_setup_socket_method(SocketOptions *self, gint fd, GSockAddr *bind_addr, AFSocketDirection dir)
+socket_options_setup_socket_method(SocketOptions *self, gint fd, gint sock_type, GSockAddr *bind_addr,
+                                   AFSocketDirection dir)
 {
 
   if (dir & AFSOCKET_DIR_RECV)
@@ -129,7 +130,7 @@ socket_options_setup_socket_method(SocketOptions *self, gint fd, GSockAddr *bind
       if (self->so_broadcast && !_setup_broadcast(fd))
         return FALSE;
     }
-  if (self->so_keepalive && !_setup_keepalive(fd))
+  if (sock_type == SOCK_STREAM && self->so_keepalive && !_setup_keepalive(fd))
     return FALSE;
   return TRUE;
 }

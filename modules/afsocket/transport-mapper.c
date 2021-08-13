@@ -69,7 +69,7 @@ transport_mapper_open_socket(TransportMapper *self,
   g_fd_set_nonblock(sock, TRUE);
   g_fd_set_cloexec(sock, TRUE);
 
-  if (!socket_options_setup_socket(socket_options, sock, peer_addr, dir))
+  if (!socket_options_setup_socket(socket_options, sock, self->sock_type, peer_addr, dir))
     goto error_close;
 
   if (!transport_mapper_privileged_bind(sock, bind_addr))

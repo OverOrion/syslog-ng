@@ -127,16 +127,17 @@ socket_options_inet_setup_tcp_keepalive_timers(SocketOptionsInet *self, gint fd)
 }
 
 static gboolean
-socket_options_inet_setup_socket(SocketOptions *s, gint fd, GSockAddr *addr, AFSocketDirection dir)
+socket_options_inet_setup_socket(SocketOptions *s, gint fd, gint sock_type, GSockAddr *addr, AFSocketDirection dir)
 {
   SocketOptionsInet *self = (SocketOptionsInet *) s;
   gint off = 0;
   gint on = 1;
 
-  if (!socket_options_setup_socket_method(s, fd, addr, dir))
+  if (!socket_options_setup_socket_method(s, fd, sock_type, addr, dir))
     return FALSE;
 
-  socket_options_inet_setup_tcp_keepalive_timers(self, fd);
+  if (sock_type == SOCK_STREAM)
+    socket_options_inet_setup_tcp_keepalive_timers(self, fd);
 
   if (self->interface_name)
     {
