@@ -389,7 +389,9 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.logproto = "proxied-tcp";
       self->super.sock_type = SOCK_STREAM;
       self->super.sock_proto = IPPROTO_TCP;
-      self->require_tls = TRUE;
+      self->require_tls = FALSE;
+      self->require_tls_when_has_tls_context = FALSE;
+      self->allow_tls = TRUE;
     }
   else
     {

@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include "messages.h"
 #include "logproto-proxied-text-server.h"
+#include "transport/multitransport.h"
+#include "transport/transport-factory-tls.h"
 #include "str-utils.h"
 
 #define PROXY_HDR_TCP4 "PROXY TCP4 "
@@ -189,6 +191,33 @@ _log_proto_proxied_text_server_add_aux_data(LogProtoProxiedTextServer *self, Log
   return;
 }
 
+static void
+_log_proto_proxied_text_server_switch_to_tls(LogProtoProxiedTextServer *self)
+{
+  if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, transport_factory_tls_id()))
+    {
+      msg_error("proxied-tls failed to switch to TLS");
+      return;
+    }
+  self->using_tls = TRUE;
+  msg_info("proxied-tls switch to TLS: OK");
+}
+
+
+static gboolean
+_is_valid_v1_header(const gchar* str, gint str_len)
+{
+  if(str_len < 3 || str == NULL)
+    return FALSE;
+  for(gint i = 0; i < str_len; i++)
+  {
+    if(str[i] == '\r' && i < str_len -1){
+      return str[i+1] == '\n';
+    }
+  }
+  return FALSE;
+}
+
 static LogProtoStatus
 _log_proto_proxied_text_server_handshake(LogProtoServer *s)
 {
@@ -248,6 +277,46 @@ _log_proto_proxied_text_server_fetch(LogProtoServer *s, const guchar **msg, gsiz
   return LPS_SUCCESS;
 }
 
+static gssize
+_log_proto_proxied_text_server_read(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *aux)
+{
+  LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
+  //1st NON TLS read/peek
+
+  gint rc;
+  gchar proxy_hdr_buf[PROXY_PROTO_HDR_MAX_LEN_RFC];
+
+  // TODO: figure out a way to work with plain TCP connections
+  if(!self->using_tls)
+  {
+    do
+    {
+      rc = recv(s->fd, proxy_hdr_buf, PROXY_PROTO_HDR_MAX_LEN_RFC-1, MSG_PEEK);
+    } while (rc == -1 && errno == EINTR);
+
+    proxy_hdr_buf[rc+1] = '\0';
+  }
+
+  if(!self->using_tls && 
+    _is_valid_v1_header(proxy_hdr_buf, rc+1) && _log_proto_proxied_text_server_parse_header(self, proxy_hdr_buf, rc+1))
+  {
+    // TLS switch
+    // TODO: figure out a way to work with plain TCP connections
+      do
+    {
+      rc = recv(s->fd, buf, buflen, 0);
+    } while (rc == -1 && errno == EINTR);
+    _log_proto_proxied_text_server_switch_to_tls(self);
+    
+  }
+  if(!self->using_tls)
+  {
+    msg_error("Error PROXY header not valid");
+    return rc;
+  }
+  return rc + self->super.super.super.transport->read(self->super.super.super.transport, buf, buflen, aux);
+}
+
 static void
 _log_proto_proxied_text_server_free(LogProtoServer *s)
 {
@@ -271,6 +340,7 @@ _log_proto_proxied_text_server_init(LogProtoProxiedTextServer *self, LogTranspor
   log_proto_text_server_init(&self->super, transport, options);
 
   self->super.super.super.fetch = _log_proto_proxied_text_server_fetch;
+  self->super.super.super.transport->read = _log_proto_proxied_text_server_read;
   self->super.super.super.free_fn = _log_proto_proxied_text_server_free;
   self->super.super.super.handshake_in_progess = _log_proto_proxied_text_server_handshake_in_progress;
   self->super.super.super.handshake = _log_proto_proxied_text_server_handshake;
@@ -284,8 +354,9 @@ log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerO
 {
   LogProtoProxiedTextServer *self = g_new0(LogProtoProxiedTextServer, 1);
   self->info = g_new0(struct ProxyProtoInfo, 1);
-
-  _log_proto_proxied_text_server_init(self, transport, options);
+  
+  MultiTransport *multitransport = (MultiTransport *) transport;
+  _log_proto_proxied_text_server_init(self, (LogTransport *) multitransport, options);
 
   return &self->super.super.super;
 }

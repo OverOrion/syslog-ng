@@ -50,6 +50,7 @@ typedef struct _LogProtoProxiedTextServer
 
   // Flag to only run handshake() once
   gboolean handshake_done;
+  gboolean using_tls;
 } LogProtoProxiedTextServer;
 
 LogProtoServer *log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options);
