@@ -270,7 +270,7 @@ _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
 
-  return !self->handshake_done;
+  return !self->handshake_done && !self->has_to_switch_to_tls;
 }
 
 static LogProtoStatus
