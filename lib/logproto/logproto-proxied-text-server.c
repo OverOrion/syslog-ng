@@ -26,13 +26,13 @@
 #include <stdlib.h>
 #include "messages.h"
 #include "logproto-proxied-text-server.h"
+#include "transport/multitransport.h"
+#include "transport/transport-factory-tls.h"
 #include "str-utils.h"
 
 #define PROXY_HDR_TCP4 "PROXY TCP4 "
 #define PROXY_HDR_TCP6 "PROXY TCP6 "
 #define PROXY_HDR_UNKNOWN "PROXY UNKNOWN"
-#define PROXY_PROTO_HDR_MAX_LEN_RFC 108
-#define PROXY_PROTO_HDR_MAX_LEN (PROXY_PROTO_HDR_MAX_LEN_RFC * 2)
 
 static gboolean
 _check_header_length(const guchar *msg, gsize msg_len)
@@ -189,6 +189,34 @@ _log_proto_proxied_text_server_add_aux_data(LogProtoProxiedTextServer *self, Log
   return;
 }
 
+static inline LogProtoStatus
+_fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
+{
+  for(gint i = 0; i < PROXY_PROTO_HDR_MAX_LEN_RFC; i++)
+    {
+      gssize rc = log_transport_read(self->super.super.super.transport, &(self->v1_proxy_header_buff[i]), sizeof(gchar),
+                                     NULL);
+      self->v1_proxy_header_buff[i+1] = '\0';
+      *hdr_len = i+1;
+      if (self->v1_proxy_header_buff[i] == '\n')
+        {
+          return LPS_SUCCESS;
+        }
+    }
+  return LPS_ERROR;
+}
+
+static void
+_log_proto_proxied_text_server_switch_to_tls(LogProtoProxiedTextServer *self)
+{
+  if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, transport_factory_tls_id()))
+    {
+      msg_error("proxied-tls failed to switch to TLS");
+      return;
+    }
+  msg_info("proxied-tls switch to TLS: OK");
+}
+
 static LogProtoStatus
 _log_proto_proxied_text_server_handshake(LogProtoServer *s)
 {
@@ -201,9 +229,16 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
 
   // Fetch a line from the transport layer
-  status = log_proto_buffered_server_fetch(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
-
-  self->handshake_done = (status == LPS_SUCCESS);
+  if(self->has_to_switch_to_tls)
+    {
+      status = _fetch_into_proxy_buffer(self, &msg_len);
+      msg = self->v1_proxy_header_buff;
+    }
+  else
+    {
+      status = log_proto_buffered_server_fetch(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
+    }
+  self->handshake_done = (status == LPS_SUCCESS && !self->has_to_switch_to_tls);
   if (status != LPS_SUCCESS)
     return status;
 
@@ -214,6 +249,12 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
   if (parsable)
     {
       msg_info("PROXY protocol header parsed successfully");
+      if (self->has_to_switch_to_tls)
+        {
+          _log_proto_proxied_text_server_switch_to_tls(self);
+          self->has_to_switch_to_tls = FALSE;
+          self->handshake_done = TRUE;
+        }
       return LPS_SUCCESS;
     }
   else
@@ -227,8 +268,7 @@ static gboolean
 _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
-
-  return !self->handshake_done;
+  return !self->handshake_done || self->has_to_switch_to_tls;
 }
 
 static LogProtoStatus
@@ -278,14 +318,28 @@ _log_proto_proxied_text_server_init(LogProtoProxiedTextServer *self, LogTranspor
   return;
 }
 
+static LogProtoProxiedTextServer *
+_log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+{
+  LogProtoProxiedTextServer *self = g_new0(LogProtoProxiedTextServer, 1);
+  self->info = g_new0(struct ProxyProtoInfo, 1);
+  return self;
+}
 
 LogProtoServer *
 log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options)
 {
-  LogProtoProxiedTextServer *self = g_new0(LogProtoProxiedTextServer, 1);
-  self->info = g_new0(struct ProxyProtoInfo, 1);
-
+  LogProtoProxiedTextServer *self =  _log_proto_proxied_text_server_new(transport, options);
   _log_proto_proxied_text_server_init(self, transport, options);
+  return &self->super.super.super;
+}
 
+
+LogProtoServer *
+log_proto_proxied_text_tls_passthrough_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+{
+  LogProtoProxiedTextServer *self =  _log_proto_proxied_text_server_new(transport, options);
+  _log_proto_proxied_text_server_init(self, transport, options);
+  self->has_to_switch_to_tls = TRUE;
   return &self->super.super.super;
 }
