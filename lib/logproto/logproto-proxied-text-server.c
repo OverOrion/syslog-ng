@@ -199,11 +199,10 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
       self->v1_proxy_header_buff[i+1] = '\0';
       *hdr_len = i+1;
       // printf("\nHDR: %s",self->v1_proxy_header_buff);
-      if (self->v1_proxy_header_buff[i] == '\n' && i > 0 && self->v1_proxy_header_buff[i-1] == '\r')
+      if (self->v1_proxy_header_buff[i] == '\n')
         {
           return LPS_SUCCESS;
         }
-      //TODO error handling
     }
 }
 
