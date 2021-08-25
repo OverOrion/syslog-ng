@@ -71,11 +71,7 @@ static int read_from_file = 0;
 static gint64 raw_message_length = 0;
 static gint64 *thread_stat_count = NULL;
 static gint64 *thread_stat_count_last = NULL;
-static gboolean proxied = FALSE;
-static char *proxy_src_ip = NULL;
-static char *proxy_dst_ip = NULL;
-static char *proxy_src_port = NULL;
-static char *proxy_dst_port = NULL;
+
 
 static GMutex *message_counter_lock = NULL;
 
@@ -86,11 +82,6 @@ static GOptionEntry loggen_options[] =
   { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for", "<sec>" },
   { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit", NULL},
   { "syslog-proto", 'P', 0, G_OPTION_ARG_NONE, &syslog_proto, "Use the new syslog-protocol message format (see also framing)", NULL },
-  { "proxied", 'H', 0, G_OPTION_ARG_NONE, &proxied, "Generate PROXY protocol v1 header", NULL },
-  { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_src_ip, "Source IP for the PROXY protocol v1 header", "<ip address>" },
-  { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_ip, "Destination IP for the PROXY protocol v1 header", "<ip address>" },
-  { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &proxy_src_port, "Source port for the PROXY protocol v1 header", "<port>" },
-  { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_port, "Destination port for the PROXY protocol v1 header", "<port>" },
   { "sdata", 'p', 0, G_OPTION_ARG_STRING, &sdata_value, "Send the given sdata (e.g. \"[test name=\\\"value\\\"]\") in case of syslog-proto", NULL },
   { "no-framing", 'F', G_OPTION_ARG_NONE, G_OPTION_ARG_NONE, &noframing, "Don't use syslog-protocol style framing, even if syslog-proto is set", NULL },
   { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server (default = 1)", "<number>" },
@@ -110,15 +101,6 @@ int
 generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsigned long seq)
 {
   int str_len;
-
-  if (proxied && !thread_context->proxy_header_sent)
-    {
-      str_len = generate_proxy_header(buffer, buffer_size, thread_context->index, proxy_src_ip, proxy_dst_ip, proxy_src_port,
-                                      proxy_dst_port);
-      thread_context->proxy_header_sent = TRUE;
-      DEBUG("Generated PROXY protocol v1 header; len=%d\n", str_len);
-      return str_len;
-    }
 
   if (read_from_file)
     str_len = read_next_message_from_file(buffer, buffer_size, syslog_proto, thread_context->index);

@@ -40,6 +40,10 @@
 #define USEC_PER_SEC      1000000
 #define CONNECTION_TIMEOUT_SEC 5
 
+#define HEADER_BUF_SIZE 128
+#define IP_ADDRESS_MAX_LENGTH 15
+#define IP_PORT_MAX_LENGTH 5
+
 int get_debug_level(void);
 void set_debug_level(int new_debug);
 unsigned long time_val_diff_in_usec(struct timeval *t1, struct timeval *t2);

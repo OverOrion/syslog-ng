@@ -67,12 +67,23 @@ static int unix_socket_x = 0;
 static int sock_type_s = 0;
 static int sock_type_d = 0;
 
+static gboolean proxied = FALSE;
+static char *proxy_src_ip = NULL;
+static char *proxy_dst_ip = NULL;
+static char *proxy_src_port = NULL;
+static char *proxy_dst_port = NULL;
+
 static GOptionEntry loggen_options[] =
 {
   { "inet", 'i', 0,   G_OPTION_ARG_NONE, &inet_socket_i, "Use IP-based transport (TCP, UDP)", NULL },
   { "unix", 'x', 0,   G_OPTION_ARG_NONE, &unix_socket_x, "Use UNIX domain socket transport", NULL },
   { "stream", 'S', 0, G_OPTION_ARG_NONE, &sock_type_s,   "Use stream socket (TCP and unix-stream)", NULL },
   { "dgram", 'D', 0,  G_OPTION_ARG_NONE, &sock_type_d,   "Use datagram socket (UDP and unix-dgram)", NULL },
+  { "proxied", 'H', 0, G_OPTION_ARG_NONE, &proxied, "Generate PROXY protocol v1 header", NULL },
+  { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_src_ip, "Source IP for the PROXY protocol v1 header", "<ip address>" },
+  { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_ip, "Destination IP for the PROXY protocol v1 header", "<ip address>" },
+  { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &proxy_src_port, "Source port for the PROXY protocol v1 header", "<port>" },
+  { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_port, "Destination port for the PROXY protocol v1 header", "<port>" },
   { NULL }
 };
 
@@ -379,7 +390,26 @@ active_thread_func(gpointer user_data)
           ERROR("generate_message not yet set up(%p)\n", g_thread_self());
           break;
         }
-
+        
+        //TODO send plain HDR v1
+        if(proxied && !thread_context->proxy_header_sent)
+        {
+            char buffer[HEADER_BUF_SIZE];
+            int str_len = generate_proxy_header(buffer, HEADER_BUF_SIZE, thread_context->index, proxy_src_ip, proxy_dst_ip, proxy_src_port,
+                                            proxy_dst_port);
+            DEBUG("Generated PROXY protocol v1 header; len=%d\n", str_len);
+            gint rc = send(fd, buffer, str_len, 0);
+            if (rc < 0)
+            {
+              ERROR("Error sending buffer on %d (rc=%d)\n", fd, rc);
+            }
+            else if(rc == str_len)
+            {
+              thread_context->proxy_header_sent = TRUE;
+              DEBUG("Sent PROXY protocol v1 header; len=%d\n", str_len);
+            }
+          
+        }
       int str_len = generate_message(message, MAX_MESSAGE_LENGTH, thread_context, count++);
 
       if (str_len < 0)

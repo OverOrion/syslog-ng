@@ -62,10 +62,20 @@ static gint active_thread_count;
 static gint idle_thread_count;
 
 static int use_ssl = 0;
+static gboolean proxied = FALSE;
+static char *proxy_src_ip = NULL;
+static char *proxy_dst_ip = NULL;
+static char *proxy_src_port = NULL;
+static char *proxy_dst_port = NULL;
 
 static GOptionEntry loggen_options[] =
 {
   { "use-ssl", 'U', 0, G_OPTION_ARG_NONE, &use_ssl,  "Use ssl layer", NULL },
+  { "proxied", 'H', 0, G_OPTION_ARG_NONE, &proxied, "Generate PROXY protocol v1 header", NULL },
+  { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_src_ip, "Source IP for the PROXY protocol v1 header", "<ip address>" },
+  { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_ip, "Destination IP for the PROXY protocol v1 header", "<ip address>" },
+  { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &proxy_src_port, "Source port for the PROXY protocol v1 header", "<port>" },
+  { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_port, "Destination port for the PROXY protocol v1 header", "<port>" },
   { NULL }
 };
 
@@ -305,6 +315,26 @@ active_thread_func(gpointer user_data)
   char *message = g_malloc0(MAX_MESSAGE_LENGTH+1);
 
   int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
+
+  //TODO send plain HDR v1
+
+   if (proxied && !thread_context->proxy_header_sent)
+    {
+      char buffer[HEADER_BUF_SIZE];
+      int str_len = generate_proxy_header(buffer, HEADER_BUF_SIZE, thread_context->index, proxy_src_ip, proxy_dst_ip, proxy_src_port,
+                                      proxy_dst_port);
+      DEBUG("Generated PROXY protocol v1 header; len=%d\n", str_len);
+      gint rc = send(sock_fd, buffer, str_len, 0);
+      if (rc < 0)
+      {
+        ERROR("Error sending buffer on %d (rc=%d)\n", sock_fd, rc);
+      }
+      else if(rc == str_len)
+      {
+        thread_context->proxy_header_sent = TRUE;
+        DEBUG("Sent PROXY protocol v1 header; len=%d\n", str_len);
+      }
+    }
 
   SSL *ssl = open_ssl_connection(sock_fd);
 
