@@ -240,7 +240,7 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
       status = log_proto_buffered_server_fetch(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
     }
 
-  self->handshake_done = (status == LPS_SUCCESS);
+  self->handshake_done = (status == LPS_SUCCESS && !self->has_to_switch_to_tls);
   if (status != LPS_SUCCESS)
     return status;
 
@@ -270,7 +270,7 @@ _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
 
-  return !self->handshake_done && !self->has_to_switch_to_tls;
+  return !self->handshake_done && self->has_to_switch_to_tls;
 }
 
 static LogProtoStatus
