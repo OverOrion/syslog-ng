@@ -51,6 +51,7 @@ static void           set_generate_message(generate_message_func gen_message);
 static GOptionEntry  *get_options(void);
 static gboolean       is_plugin_activated(void);
 static GPtrArray      *thread_array = NULL;
+static gboolean proxied = FALSE;
 
 static gboolean thread_run;
 static generate_message_func generate_message;
@@ -62,7 +63,6 @@ static gint active_thread_count;
 static gint idle_thread_count;
 
 static int use_ssl = 0;
-static gboolean proxied = FALSE;
 static char *proxy_src_ip = NULL;
 static char *proxy_dst_ip = NULL;
 static char *proxy_src_port = NULL;
@@ -71,11 +71,6 @@ static char *proxy_dst_port = NULL;
 static GOptionEntry loggen_options[] =
 {
   { "use-ssl", 'U', 0, G_OPTION_ARG_NONE, &use_ssl,  "Use ssl layer", NULL },
-  { "proxied", 'H', 0, G_OPTION_ARG_NONE, &proxied, "Generate PROXY protocol v1 header", NULL },
-  { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_src_ip, "Source IP for the PROXY protocol v1 header", "<ip address>" },
-  { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_ip, "Destination IP for the PROXY protocol v1 header", "<ip address>" },
-  { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &proxy_src_port, "Source port for the PROXY protocol v1 header", "<port>" },
-  { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &proxy_dst_port, "Destination port for the PROXY protocol v1 header", "<port>" },
   { NULL }
 };
 
@@ -316,24 +311,23 @@ active_thread_func(gpointer user_data)
 
   int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
 
+  unsigned long count = 0;
+
   //TODO send plain HDR v1
 
-   if (proxied && !thread_context->proxy_header_sent)
+  if (option->proxied && !thread_context->proxy_header_sent)
     {
-      char buffer[HEADER_BUF_SIZE];
-      int str_len = generate_proxy_header(buffer, HEADER_BUF_SIZE, thread_context->index, proxy_src_ip, proxy_dst_ip, proxy_src_port,
-                                      proxy_dst_port);
-      DEBUG("Generated PROXY protocol v1 header; len=%d\n", str_len);
-      gint rc = send(sock_fd, buffer, str_len, 0);
+      int str_len = generate_message(message, MAX_MESSAGE_LENGTH, thread_context, count++);
+      int rc = send(sock_fd, message, str_len, 0);
       if (rc < 0)
-      {
-        ERROR("Error sending buffer on %d (rc=%d)\n", sock_fd, rc);
-      }
+        {
+          ERROR("Error sending buffer on %d (rc=%d)\n", sock_fd, rc);
+        }
       else if(rc == str_len)
-      {
-        thread_context->proxy_header_sent = TRUE;
-        DEBUG("Sent PROXY protocol v1 header; len=%d\n", str_len);
-      }
+        {
+          thread_context->proxy_header_sent = TRUE;
+          DEBUG("Sent PROXY protocol v1 header; len=%d\n", str_len);
+        }
     }
 
   SSL *ssl = open_ssl_connection(sock_fd);
@@ -366,7 +360,6 @@ active_thread_func(gpointer user_data)
   DEBUG("thread (%s,%p) started. (r=%d,c=%d)\n", ssl_loggen_plugin_info.name, g_thread_self(), option->rate,
         option->number_of_messages);
 
-  unsigned long count = 0;
   thread_context->buckets = thread_context->option->rate - (thread_context->option->rate / 10);
 
   gettimeofday(&thread_context->last_throttle_check, NULL);

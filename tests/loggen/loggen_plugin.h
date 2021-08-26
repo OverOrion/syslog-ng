@@ -46,6 +46,7 @@ typedef struct _plugin_option
   const char *port;
   int  rate;
   int reconnect;
+  gboolean proxied;
 } PluginOption;
 
 typedef struct _thread_data
