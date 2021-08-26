@@ -198,7 +198,6 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
                                      NULL);
       self->v1_proxy_header_buff[i+1] = '\0';
       *hdr_len = i+1;
-      // printf("\nHDR: %s",self->v1_proxy_header_buff);
       if (self->v1_proxy_header_buff[i] == '\n')
         {
           return LPS_SUCCESS;
@@ -269,7 +268,6 @@ static gboolean
 _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
-printf("\n in progress: self->handshake_done: %d", self->handshake_done);
   return !self->handshake_done || self->has_to_switch_to_tls;
 }
 
