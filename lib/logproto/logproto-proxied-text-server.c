@@ -204,6 +204,7 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
           return LPS_SUCCESS;
         }
     }
+    return LPS_ERROR;
 }
 
 static void
@@ -238,7 +239,6 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
     {
       status = log_proto_buffered_server_fetch(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
     }
-
   self->handshake_done = (status == LPS_SUCCESS && !self->has_to_switch_to_tls);
   if (status != LPS_SUCCESS)
     return status;
@@ -254,6 +254,7 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
         {
           _log_proto_proxied_text_server_switch_to_tls(self);
           self->has_to_switch_to_tls = FALSE;
+          self->handshake_done = TRUE;
         }
       return LPS_SUCCESS;
     }
@@ -268,7 +269,7 @@ static gboolean
 _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
-
+printf("\n in progress: self->handshake_done: %d", self->handshake_done);
   return !self->handshake_done || self->has_to_switch_to_tls;
 }
 
