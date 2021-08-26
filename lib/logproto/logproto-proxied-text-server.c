@@ -203,7 +203,7 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
           return LPS_SUCCESS;
         }
     }
-    return LPS_ERROR;
+  return LPS_ERROR;
 }
 
 static void
