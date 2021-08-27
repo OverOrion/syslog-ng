@@ -33,10 +33,6 @@
 #include <sys/socket.h>
 #include <openssl/err.h>
 
-#define HEADER_BUF_SIZE 128
-#define IP_ADDRESS_MAX_LENGTH 15
-#define IP_PORT_MAX_LENGTH 5
-
 #ifndef AI_V4MAPPED
 #define AI_V4MAPPED 0
 #endif
