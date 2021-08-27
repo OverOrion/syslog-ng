@@ -380,7 +380,26 @@ active_thread_func(gpointer user_data)
           break;
         }
 
-      int str_len = generate_message(message, MAX_MESSAGE_LENGTH, thread_context, count++);
+      int str_len;
+      if(option->proxied && !thread_context->proxy_header_sent && option->proxied_passthrough)
+        {
+          str_len = generate_proxy_header(message, MAX_MESSAGE_LENGTH, thread_context->index, option->proxy_src_ip,
+                                          option->proxy_dst_ip,
+                                          option->proxy_src_port,
+                                          option->proxy_dst_port);
+          DEBUG("Generated PROXY protocol v1 header; len=%d\n", str_len);
+          int rc = send(fd, message, str_len, 0);
+          if (rc < 0)
+            {
+              ERROR("Error sending buffer on %d (rc=%d)\n", fd, rc);
+            }
+          else if(rc == str_len)
+            {
+              thread_context->proxy_header_sent = TRUE;
+              DEBUG("Sent PROXY protocol v1 header; len=%d\n", str_len);
+            }
+        }
+      str_len = generate_message(message, MAX_MESSAGE_LENGTH, thread_context, count++);
 
       if (str_len < 0)
         {
