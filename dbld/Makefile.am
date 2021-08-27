@@ -35,5 +35,6 @@ EXTRA_DIST += \
 	dbld/images/ubuntu-xenial.dockerfile \
 	dbld/images/ubuntu-bionic.dockerfile \
 	dbld/images/ubuntu-focal.dockerfile \
+	dbld/images/ubuntu-groovy.dockerfile \
 	dbld/images/README.md \
 	dbld/README.md
