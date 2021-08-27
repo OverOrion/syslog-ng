@@ -40,6 +40,7 @@ jobs:
         - [ 'ubuntu-xenial',    'deb' ]
         - [ 'ubuntu-bionic',    'deb' ]
         - [ 'ubuntu-focal',     'deb' ]
+        - [ 'ubuntu-groovy',    'deb' ]
         - [ 'centos-7',         'rpm' ]
         - [ 'fedora-33',        'rpm' ]
       fail-fast: false
