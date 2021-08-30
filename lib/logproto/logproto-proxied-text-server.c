@@ -196,11 +196,18 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
     {
       gssize rc = log_transport_read(self->super.super.super.transport, &(self->v1_proxy_header_buff[i]), sizeof(gchar),
                                      NULL);
-      self->v1_proxy_header_buff[i+1] = '\0';
-      *hdr_len = i+1;
-      if (self->v1_proxy_header_buff[i] == '\n')
+      if(rc > 0)
         {
-          return LPS_SUCCESS;
+          self->v1_proxy_header_buff[i+1] = '\0';
+          *hdr_len = i+1;
+          if (self->v1_proxy_header_buff[i] == '\n')
+            {
+              return LPS_SUCCESS;
+            }
+        }
+      else if(rc == 0)
+        {
+          return LPS_AGAIN;
         }
     }
   return LPS_ERROR;
