@@ -144,7 +144,7 @@ transport_mapper_inet_construct_log_transport(TransportMapper *s, gint fd)
 {
   TransportMapperInet *self = (TransportMapperInet *) s;
 
-  if (self->tls_context && _is_tls_required(self))
+  if (self->tls_context && _is_tls_required(self) && !self->super.create_multitransport)
     {
       return _construct_tls_transport(self, fd);
     }
@@ -391,12 +391,13 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.sock_proto = IPPROTO_TCP;
       self->require_tls = TRUE;
     }
-    else if (strcasecmp(transport, "proxied-tls-passthrough") == 0)
+  else if (strcasecmp(transport, "proxied-tls-passthrough") == 0)
     {
       self->super.logproto = self->super.transport;
       self->super.sock_type = SOCK_STREAM;
       self->super.sock_proto = IPPROTO_TCP;
       self->require_tls = TRUE;
+      self->super.create_multitransport = TRUE;
     }
   else
     {
