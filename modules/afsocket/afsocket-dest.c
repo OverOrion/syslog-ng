@@ -447,7 +447,8 @@ afsocket_dd_setup_proto_factory(AFSocketDestDriver *self)
       return FALSE;
     }
 
-  self->transport_mapper->create_multitransport = self->proto_factory->use_multitransport;
+  if(!self->transport_mapper->create_multitransport)
+    self->transport_mapper->create_multitransport = self->proto_factory->use_multitransport;
 
   return TRUE;
 }
