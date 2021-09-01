@@ -59,9 +59,9 @@ struct _NVRegistry
 {
   /* number of static names that are statically allocated in each payload */
   gint num_static_names;
+  guint32 nvhandle_max_value;
   NVHandleDescArray *names;
   GHashTable *name_map;
-  guint32 nvhandle_max_value;
 };
 
 extern const gchar *null_string;
