@@ -66,6 +66,8 @@ typedef struct _PersistEntry
 struct _PersistState
 {
   gint version;
+  gint current_key_size; /* <- keys being used */
+
   gchar *committed_filename;
   gchar *temp_filename;
   gint fd;
@@ -82,7 +84,6 @@ struct _PersistState
   GHashTable *keys;
   PersistEntryHandle current_key_block;
   gint current_key_ofs;
-  gint current_key_size;
 };
 
 typedef struct _PersistState PersistState;
