@@ -105,6 +105,8 @@ struct _LogExprNode
 
   guint32 flags;
 
+  gint child_id; /* used during construction in case a rule specific object needs to be created. */
+
   /* name of the rule for named rules and name of the named rule for references */
   gchar *name;
   /* parent node */
@@ -121,8 +123,8 @@ struct _LogExprNode
   gpointer aux;
   GDestroyNotify aux_destroy;
   gchar *filename;
-  gint line, column;
-  gint child_id;
+  gint line;
+  gint column;
 };
 
 gint log_expr_node_lookup_flag(const gchar *flag);
@@ -162,12 +164,12 @@ typedef struct _CfgTree
   GlobalConfig *cfg;
   GPtrArray *initialized_pipes;
   gint anon_counters[ENC_MAX];
+  gboolean compiled; /* top-level rule */
   /* hash of predefined source/filter/rewrite/parser/destination objects */
   GHashTable *objects;
   /* list of top-level rules */
   GPtrArray *rules;
   GHashTable *templates;
-  gboolean compiled;
 } CfgTree;
 
 gboolean cfg_tree_add_object(CfgTree *self, LogExprNode *rule);
