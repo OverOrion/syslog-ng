@@ -62,6 +62,7 @@ struct _GlobalConfig
   /* hex-encoded syslog-ng major/minor, e.g. 0x0201 is syslog-ng 2.1 format */
   gint user_version;
 
+  gboolean bad_hostname_compiled;
   const gchar *filename;
   PluginContext plugin_context;
   gboolean use_plugin_discovery;
@@ -78,7 +79,6 @@ struct _GlobalConfig
   gboolean chain_hostnames;
   gboolean keep_hostname;
   gboolean check_hostname;
-  gboolean bad_hostname_compiled;
   regex_t bad_hostname;
   gchar *bad_hostname_re;
   gchar *custom_domain;
