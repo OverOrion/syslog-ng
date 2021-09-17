@@ -39,28 +39,6 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 
-struct _TLSContext
-{
-  GAtomicCounter ref_cnt;
-  TLSMode mode;
-  gint verify_mode;
-  gchar *key_file;
-  gchar *cert_file;
-  gchar *dhparam_file;
-  gchar *pkcs12_file;
-  gchar *ca_dir;
-  gchar *crl_dir;
-  gchar *ca_file;
-  gchar *cipher_suite;
-  gchar *ecdh_curve_list;
-  gchar *sni;
-  SSL_CTX *ssl_ctx;
-  GList *trusted_fingerprint_list;
-  GList *trusted_dn_list;
-  gint ssl_options;
-  gchar *location;
-};
-
 typedef enum
 {
   TLS_CONTEXT_OK,
@@ -697,6 +675,33 @@ tls_context_load_key_and_cert(TLSContext *self)
   return TLS_CONTEXT_OK;
 }
 
+static inline void
+_dump_tls_secrets(const SSL *ssl, const char* line)
+{
+  if(ssl == NULL)
+  {
+    return;
+  }
+  const char* file_path = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), 0);
+  printf("\nget_path: ='%s'\n", file_path);
+  FILE *tls_secrets_file = fopen(file_path, "a");
+  if(tls_secrets_file)
+  {
+    printf("\nhere: line='%s'\n", line);
+    int i = fprintf(tls_secrets_file, "%s\n", line);
+    fclose(tls_secrets_file);
+    printf("\nretval: ='%d'\n", i);
+  }
+}
+
+static inline void
+_set_secrets_dump_to_file(TLSContext *self)
+{
+  printf("\nfile-path='%s'\n", self->secrets_file);
+  SSL_CTX_set_ex_data(self->ssl_ctx, 0, self->secrets_file);
+  SSL_CTX_set_keylog_callback(self->ssl_ctx, _dump_tls_secrets);
+}
+
 TLSContextSetupResult
 tls_context_setup_context(TLSContext *self)
 {
@@ -757,6 +762,11 @@ tls_context_setup_context(TLSContext *self)
       if (!SSL_CTX_set_cipher_list(self->ssl_ctx, self->cipher_suite))
         goto error;
     }
+  
+  if(self->secrets_file)
+  {
+    _set_secrets_dump_to_file(self);
+  }
 
   return TLS_CONTEXT_SETUP_OK;
 
@@ -997,6 +1007,17 @@ tls_context_set_key_file(TLSContext *self, const gchar *key_file)
   self->key_file = g_strdup(key_file);
   SSL_CTX_set_default_passwd_cb(self->ssl_ctx, _pem_passwd_callback);
   SSL_CTX_set_default_passwd_cb_userdata(self->ssl_ctx, self->key_file);
+}
+
+void
+tls_context_set_secrets_file(TLSContext *self, const gchar *secrets_file)
+{
+  g_free(self->secrets_file);
+  printf("\n-------------------------------'\n");
+  printf("\nfile-path-setter='%s'\n", secrets_file);
+  self->secrets_file = g_strdup(secrets_file);
+  printf("after: file-path-setter='%s'\n", self->secrets_file);
+  printf("\n-------------------------------'\n");
 }
 
 void
