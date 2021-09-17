@@ -39,28 +39,6 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 
-struct _TLSContext
-{
-  GAtomicCounter ref_cnt;
-  TLSMode mode;
-  gint verify_mode;
-  gchar *key_file;
-  gchar *cert_file;
-  gchar *dhparam_file;
-  gchar *pkcs12_file;
-  gchar *ca_dir;
-  gchar *crl_dir;
-  gchar *ca_file;
-  gchar *cipher_suite;
-  gchar *ecdh_curve_list;
-  gchar *sni;
-  SSL_CTX *ssl_ctx;
-  GList *trusted_fingerprint_list;
-  GList *trusted_dn_list;
-  gint ssl_options;
-  gchar *location;
-};
-
 typedef enum
 {
   TLS_CONTEXT_OK,
@@ -697,6 +675,43 @@ tls_context_load_key_and_cert(TLSContext *self)
   return TLS_CONTEXT_OK;
 }
 
+static void _write_line_to_keylog_file_mutex(const char *file_path, const char *line)
+{
+  FILE *keylog_file;
+  gint ret_val;
+  static GStaticMutex mutex;
+  g_static_mutex_lock(&mutex);
+  keylog_file = fopen(file_path, "a");
+  if(keylog_file)
+    {
+      ret_val = fprintf(keylog_file, "%s\n", line);
+      if (ret_val != strlen(line))
+        {
+          msg_error("Couldn't write to TLS keylogfile", evt_tag_errno("error", ret_val));
+        }
+      fclose(keylog_file);
+    }
+  g_static_mutex_unlock(&mutex);
+}
+
+static inline void
+_dump_tls_keylog(const SSL *ssl, const char *line)
+{
+  if(ssl == NULL)
+    {
+      return;
+    }
+  const char *file_path = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), _TLS_KEYLOG_INDEX);
+  _write_line_to_keylog_file_mutex(file_path, line);
+}
+
+static inline void
+_set_keylog_to_file(TLSContext *self)
+{
+  SSL_CTX_set_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX, self->keylog_file);
+  SSL_CTX_set_keylog_callback(self->ssl_ctx, _dump_tls_keylog);
+}
+
 TLSContextSetupResult
 tls_context_setup_context(TLSContext *self)
 {
@@ -756,6 +771,11 @@ tls_context_setup_context(TLSContext *self)
     {
       if (!SSL_CTX_set_cipher_list(self->ssl_ctx, self->cipher_suite))
         goto error;
+    }
+
+  if(self->keylog_file)
+    {
+      _set_keylog_to_file(self);
     }
 
   return TLS_CONTEXT_SETUP_OK;
@@ -997,6 +1017,15 @@ tls_context_set_key_file(TLSContext *self, const gchar *key_file)
   self->key_file = g_strdup(key_file);
   SSL_CTX_set_default_passwd_cb(self->ssl_ctx, _pem_passwd_callback);
   SSL_CTX_set_default_passwd_cb_userdata(self->ssl_ctx, self->key_file);
+}
+
+void
+tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file)
+{
+  g_free(self->keylog_file);
+  msg_warning("WARNING: TLS keylog file has been set up, it should only be used during debugging sessions, NOT in production environments",
+              evt_tag_str("keylog-file", keylog_file));
+  self->keylog_file = g_strdup(keylog_file);
 }
 
 void

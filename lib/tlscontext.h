@@ -29,6 +29,8 @@
 #include "atomic.h"
 #include <openssl/ssl.h>
 
+#define _TLS_KEYLOG_INDEX 0
+
 typedef enum
 {
   TM_CLIENT,
@@ -64,7 +66,29 @@ typedef enum
 } TLSContextSetupResult;
 
 typedef gint (*TLSSessionVerifyFunc)(gint ok, X509_STORE_CTX *ctx, gpointer user_data);
-typedef struct _TLSContext TLSContext;
+
+typedef struct _TLSContext
+{
+  GAtomicCounter ref_cnt;
+  TLSMode mode;
+  gint verify_mode;
+  gchar *key_file;
+  gchar *keylog_file;
+  gchar *cert_file;
+  gchar *dhparam_file;
+  gchar *pkcs12_file;
+  gchar *ca_dir;
+  gchar *crl_dir;
+  gchar *ca_file;
+  gchar *cipher_suite;
+  gchar *ecdh_curve_list;
+  gchar *sni;
+  SSL_CTX *ssl_ctx;
+  GList *trusted_fingerprint_list;
+  GList *trusted_dn_list;
+  gint ssl_options;
+  gchar *location;
+} TLSContext;
 
 #define X509_MAX_CN_LEN 64
 #define X509_MAX_O_LEN 64
@@ -118,6 +142,7 @@ gint tls_context_get_verify_mode(const TLSContext *self);
 void tls_context_set_verify_mode(TLSContext *self, gint verify_mode);
 void tls_context_set_key_file(TLSContext *self, const gchar *key_file);
 void tls_context_set_cert_file(TLSContext *self, const gchar *cert_file);
+void tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file);
 void tls_context_set_pkcs12_file(TLSContext *self, const gchar *pkcs12_file);
 void tls_context_set_ca_dir(TLSContext *self, const gchar *ca_dir);
 void tls_context_set_crl_dir(TLSContext *self, const gchar *crl_dir);
