@@ -708,8 +708,15 @@ _dump_tls_keylog(const SSL *ssl, const char *line)
 static inline void
 _set_keylog_to_file(TLSContext *self)
 {
-  SSL_CTX_set_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX, self->keylog_file);
-  SSL_CTX_set_keylog_callback(self->ssl_ctx, _dump_tls_keylog);
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
+  {
+    SSL_CTX_set_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX, self->keylog_file);
+    SSL_CTX_set_keylog_callback(self->ssl_ctx, _dump_tls_keylog);
+  }
+#else
+  msg_error("SSL_CTX_set_keylog_callback function is not available in your OpenSSL version, please upgrade it to at least 1.1.1",
+            evt_tag_str("Your version", OPENSSL_VERSION_NUMBER));
+#endif
 }
 
 TLSContextSetupResult
