@@ -737,20 +737,6 @@ _dump_tls_keylog(const SSL *ssl, const char *line)
   _write_line_to_keylog_file_mutex(file_path, line);
 }
 
-static inline void
-_set_keylog_to_file(TLSContext *self)
-{
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-  {
-    SSL_CTX_set_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX, self->keylog_file);
-    SSL_CTX_set_keylog_callback(self->ssl_ctx, _dump_tls_keylog);
-  }
-#else
-  msg_error("SSL_CTX_set_keylog_callback function is not available in your OpenSSL version, please upgrade it to at least 1.1.1",
-            evt_tag_str("Your version", OPENSSL_VERSION_NUMBER));
-#endif
-}
-
 TLSContextSetupResult
 tls_context_setup_context(TLSContext *self)
 {
@@ -810,11 +796,6 @@ tls_context_setup_context(TLSContext *self)
     {
       if (!SSL_CTX_set_cipher_list(self->ssl_ctx, self->cipher_suite))
         goto error;
-    }
-
-  if(self->keylog_file)
-    {
-      _set_keylog_to_file(self);
     }
 
   return TLS_CONTEXT_SETUP_OK;
@@ -1058,13 +1039,18 @@ tls_context_set_key_file(TLSContext *self, const gchar *key_file)
   SSL_CTX_set_default_passwd_cb_userdata(self->ssl_ctx, self->key_file);
 }
 
-void
+gboolean
 tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file)
 {
   g_free(self->keylog_file);
   msg_warning_once("WARNING: TLS keylog file has been set up, it should only be used during debugging sessions, NOT in production environments",
-              evt_tag_str("keylog-file", keylog_file));
+                   evt_tag_str("keylog-file", keylog_file));
   self->keylog_file = g_strdup(keylog_file);
+  if(self->keylog_file)
+    {
+      openssl_setup_keylog_file(self->ssl_ctx, _dump_tls_keylog, _TLS_KEYLOG_INDEX, self->keylog_file);
+    }
+  return !SSL_CTX_get_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX);
 }
 
 void
