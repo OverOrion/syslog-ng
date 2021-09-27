@@ -716,6 +716,13 @@ static void _write_line_to_keylog_file_mutex(const char *file_path, const char *
         }
       fclose(keylog_file);
     }
+  else
+    {
+      msg_error("Error opening keylog-file",
+                evt_tag_str(EVT_TAG_FILENAME, file_path),
+                evt_tag_error(EVT_TAG_OSERROR));
+      return;
+    }
   g_static_mutex_unlock(&mutex);
 }
 
