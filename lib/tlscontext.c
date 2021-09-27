@@ -1062,7 +1062,7 @@ void
 tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file)
 {
   g_free(self->keylog_file);
-  msg_warning("WARNING: TLS keylog file has been set up, it should only be used during debugging sessions, NOT in production environments",
+  msg_warning_once("WARNING: TLS keylog file has been set up, it should only be used during debugging sessions, NOT in production environments",
               evt_tag_str("keylog-file", keylog_file));
   self->keylog_file = g_strdup(keylog_file);
 }
