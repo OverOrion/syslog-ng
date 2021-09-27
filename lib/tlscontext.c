@@ -39,6 +39,29 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 
+struct _TLSContext
+{
+  GAtomicCounter ref_cnt;
+  TLSMode mode;
+  gint verify_mode;
+  gchar *key_file;
+  gchar *keylog_file;
+  gchar *cert_file;
+  gchar *dhparam_file;
+  gchar *pkcs12_file;
+  gchar *ca_dir;
+  gchar *crl_dir;
+  gchar *ca_file;
+  gchar *cipher_suite;
+  gchar *ecdh_curve_list;
+  gchar *sni;
+  SSL_CTX *ssl_ctx;
+  GList *trusted_fingerprint_list;
+  GList *trusted_dn_list;
+  gint ssl_options;
+  gchar *location;
+};
+
 #define _TLS_KEYLOG_INDEX 0
 
 typedef enum

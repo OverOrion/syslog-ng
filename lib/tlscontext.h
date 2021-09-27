@@ -64,29 +64,7 @@ typedef enum
 } TLSContextSetupResult;
 
 typedef gint (*TLSSessionVerifyFunc)(gint ok, X509_STORE_CTX *ctx, gpointer user_data);
-
-typedef struct _TLSContext
-{
-  GAtomicCounter ref_cnt;
-  TLSMode mode;
-  gint verify_mode;
-  gchar *key_file;
-  gchar *keylog_file;
-  gchar *cert_file;
-  gchar *dhparam_file;
-  gchar *pkcs12_file;
-  gchar *ca_dir;
-  gchar *crl_dir;
-  gchar *ca_file;
-  gchar *cipher_suite;
-  gchar *ecdh_curve_list;
-  gchar *sni;
-  SSL_CTX *ssl_ctx;
-  GList *trusted_fingerprint_list;
-  GList *trusted_dn_list;
-  gint ssl_options;
-  gchar *location;
-} TLSContext;
+typedef struct _TLSContext TLSContext;
 
 #define X509_MAX_CN_LEN 64
 #define X509_MAX_O_LEN 64
