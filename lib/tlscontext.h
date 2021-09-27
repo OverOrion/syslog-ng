@@ -29,8 +29,6 @@
 #include "atomic.h"
 #include <openssl/ssl.h>
 
-#define _TLS_KEYLOG_INDEX 0
-
 typedef enum
 {
   TM_CLIENT,

@@ -39,6 +39,8 @@
 #include <openssl/bn.h>
 #include <openssl/pkcs12.h>
 
+#define _TLS_KEYLOG_INDEX 0
+
 typedef enum
 {
   TLS_CONTEXT_OK,
