@@ -240,7 +240,7 @@ openssl_ctx_setup_session_tickets(SSL_CTX *ctx)
 }
 
 void
-openssl_setup_keylog_file(SSL_CTX *ctx, SSL_CTX_keylog_cb_func cb, int idx, void *keylog_file)
+openssl_setup_keylog_file(SSL_CTX *ctx, void* cb, int idx, void *keylog_file)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   {
