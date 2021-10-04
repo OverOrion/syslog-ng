@@ -1050,7 +1050,8 @@ tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file)
     {
       openssl_setup_keylog_file(self->ssl_ctx, _dump_tls_keylog, _TLS_KEYLOG_INDEX, self->keylog_file);
     }
-  return !SSL_CTX_get_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX);
+  gchar *ret_val = SSL_CTX_get_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX);
+  return ret_val == NULL;
 }
 
 void

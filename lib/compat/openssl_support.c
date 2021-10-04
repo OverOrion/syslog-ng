@@ -240,7 +240,7 @@ openssl_ctx_setup_session_tickets(SSL_CTX *ctx)
 }
 
 void
-openssl_setup_keylog_file(SSL_CTX *ctx, void* cb, int idx, void *keylog_file)
+openssl_setup_keylog_file(SSL_CTX *ctx, void *cb, int idx, void *keylog_file)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   {
@@ -248,8 +248,7 @@ openssl_setup_keylog_file(SSL_CTX *ctx, void* cb, int idx, void *keylog_file)
     SSL_CTX_set_keylog_callback(ctx, cb);
   }
 #else
-  msg_error("SSL_CTX_set_keylog_callback function is not available in your OpenSSL version, please upgrade it to at least 1.1.1",
-            evt_tag_str("Your version", OPENSSL_VERSION_NUMBER));
+  return;
 #endif
 
 }
