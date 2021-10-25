@@ -218,10 +218,10 @@ _log_proto_proxied_text_server_switch_to_tls(LogProtoProxiedTextServer *self)
 {
   if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, transport_factory_tls_id()))
     {
-      msg_error("proxied-tls failed to switch to TLS");
+      msg_debug("proxied-tls failed to switch to TLS");
       return;
     }
-  msg_info("proxied-tls switch to TLS: OK");
+  msg_debug("proxied-tls switch to TLS: OK");
 }
 
 static LogProtoStatus
