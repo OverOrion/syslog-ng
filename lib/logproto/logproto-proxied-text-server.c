@@ -218,10 +218,10 @@ _log_proto_proxied_text_server_switch_to_tls(LogProtoProxiedTextServer *self)
 {
   if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, transport_factory_tls_id()))
     {
-      msg_debug("proxied-tls failed to switch to TLS");
+      msg_debug("proxied-tls failed to switch to TLS", evt_tag_printf("driver", "%p", self));
       return;
     }
-  msg_debug("proxied-tls switch to TLS: OK");
+  msg_debug("proxied-tls switch to TLS: OK", evt_tag_printf("driver", "%p", self));
 }
 
 static LogProtoStatus
@@ -251,11 +251,12 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
 
   parsable = _log_proto_proxied_text_server_parse_header(self, msg, msg_len);
 
-  msg_debug("PROXY protocol header received", evt_tag_printf("line", "%.*s", (gint) msg_len, msg));
+  msg_debug("PROXY protocol header received", evt_tag_printf("driver", "%p", self), evt_tag_printf("line", "%.*s",
+            (gint) msg_len, msg));
 
   if (parsable)
     {
-      msg_info("PROXY protocol header parsed successfully");
+      msg_info("PROXY protocol header parsed successfully", evt_tag_printf("driver", "%p", self));
       if (self->has_to_switch_to_tls)
         {
           _log_proto_proxied_text_server_switch_to_tls(self);
