@@ -192,7 +192,7 @@ _log_proto_proxied_text_server_add_aux_data(LogProtoProxiedTextServer *self, Log
 static inline LogProtoStatus
 _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
 {
-  for(gint i = 0; i < PROXY_PROTO_HDR_MAX_LEN_RFC; i++)
+  for(gint i = 0; i < PROXY_PROTO_HDR_MAX_LEN; i++)
     {
       gssize rc = log_transport_read(self->super.super.super.transport, &(self->v1_proxy_header_buff[i]), sizeof(gchar),
                                      NULL);
