@@ -189,6 +189,23 @@ _log_proto_proxied_text_server_add_aux_data(LogProtoProxiedTextServer *self, Log
   return;
 }
 
+static LogProtoPrepareAction
+log_proto_proxied_text_server_prepare(LogProtoServer *s, GIOCondition *cond, gint *timeout)
+{
+  LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
+
+  *cond = s->transport->cond;
+
+  if(self->handshake_done)
+    return log_proto_text_server_prepare_method(s, cond, timeout);
+
+  /* if there's no pending I/O in the transport layer, then we want to do a read */
+  if (*cond == 0)
+    *cond = G_IO_IN;
+
+  return LPPA_POLL_IO;
+}
+
 static inline LogProtoStatus
 _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self)
 {
@@ -327,23 +344,19 @@ _log_proto_proxied_text_server_init(LogProtoProxiedTextServer *self, LogTranspor
   self->super.super.super.free_fn = _log_proto_proxied_text_server_free;
   self->super.super.super.handshake_in_progess = _log_proto_proxied_text_server_handshake_in_progress;
   self->super.super.super.handshake = _log_proto_proxied_text_server_handshake;
+  self->super.super.super.prepare = log_proto_proxied_text_server_prepare;
 
   return;
-}
-
-static LogProtoProxiedTextServer *
-_log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options)
-{
-  LogProtoProxiedTextServer *self = g_new0(LogProtoProxiedTextServer, 1);
-  self->info = g_new0(struct ProxyProtoInfo, 1);
-  return self;
 }
 
 LogProtoServer *
 log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options)
 {
-  LogProtoProxiedTextServer *self =  _log_proto_proxied_text_server_new(transport, options);
+  LogProtoProxiedTextServer *self = g_new0(LogProtoProxiedTextServer, 1);
+  self->info = g_new0(struct ProxyProtoInfo, 1);
+
   _log_proto_proxied_text_server_init(self, transport, options);
+
   return &self->super.super.super;
 }
 
@@ -351,8 +364,9 @@ log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerO
 LogProtoServer *
 log_proto_proxied_text_tls_passthrough_server_new(LogTransport *transport, const LogProtoServerOptions *options)
 {
-  LogProtoProxiedTextServer *self =  _log_proto_proxied_text_server_new(transport, options);
-  _log_proto_proxied_text_server_init(self, transport, options);
+  LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) log_proto_proxied_text_server_new(transport, options);
+
   self->has_to_switch_to_tls = TRUE;
+
   return &self->super.super.super;
 }
