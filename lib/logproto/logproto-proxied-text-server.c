@@ -227,11 +227,9 @@ _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self)
             }
         }
 
+      /* permissive termination */
       if(rc == 0)
-        {
-          msg_trace("EOF occurred while reading proxy header", evt_tag_int(EVT_TAG_FD, self->super.super.super.transport->fd));
-          return LPS_EOF;
-        }
+        return LPS_SUCCESS;
 
       self->proxy_header_buff_len++;
       self->proxy_header_buff[self->proxy_header_buff_len] = '\0';
