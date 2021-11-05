@@ -180,3 +180,57 @@ Test(log_proto, test_proxy_protocol_aux_data)
   log_transport_aux_data_destroy(&aux);
   log_proto_server_free(proto);
 }
+
+
+Test(log_proto, test_proxy_protocol_header_partial_read)
+{
+  LogTransport *transport = log_transport_mock_records_new("P", -1,
+                                                           "ROXY TCP4", -1,
+                                                           "1.1.1.1", -1,
+                                                           "2.2.2.2 3333", -1,
+                                                           "4444\r\n", -1,
+                                                           "test message\n", -1,
+                                                           LTM_EOF);
+  LogProtoServer *proto = log_proto_proxied_text_server_new(transport, get_inited_proto_server_options());
+
+
+  gint timeout;
+  GIOCondition cond;
+
+  cr_assert_eq(log_proto_server_prepare(proto, &cond, &timeout), LPPA_POLL_IO);
+  cr_assert_eq(cond, G_IO_IN);
+
+  cr_assert(log_proto_server_handshake_in_progress(proto));
+  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+
+  cr_assert(log_proto_server_handshake_in_progress(proto));
+  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+
+  cr_assert_eq(log_proto_server_handshake(proto), LPS_SUCCESS);
+
+  cr_assert_not(log_proto_server_handshake_in_progress(proto));
+
+
+
+  const gchar *expected = "PROXIED_SRCIP:1.1.1.1 PROXIED_DSTIP:2.2.2.2 "
+                          "PROXIED_SRCPORT:3333 PROXIED_DSTPORT:4444 "
+                          "PROXIED_IP_VERSION:4 ";
+  LogTransportAuxData aux;
+  log_transport_aux_data_init(&aux);
+  get_aux_data_from_next_message(proto, &aux);
+
+  GString *aux_nv_concated = g_string_new(NULL);
+  log_transport_aux_data_foreach(&aux, concat_nv, aux_nv_concated);
+  cr_assert_str_eq(aux_nv_concated->str, expected);
+
+  g_string_free(aux_nv_concated, TRUE);
+  log_transport_aux_data_destroy(&aux);
+
+
+
+
+  log_proto_server_free(proto);
+
+}
