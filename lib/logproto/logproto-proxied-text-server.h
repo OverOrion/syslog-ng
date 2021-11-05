@@ -53,7 +53,9 @@ typedef struct _LogProtoProxiedTextServer
   // Flag to only run handshake() once
   gboolean handshake_done;
   gboolean has_to_switch_to_tls;
-  guchar v1_proxy_header_buff[PROXY_PROTO_HDR_MAX_LEN_RFC];
+
+  guchar proxy_header_buff[PROXY_PROTO_HDR_MAX_LEN + 1];
+  gsize proxy_header_buff_len;
 } LogProtoProxiedTextServer;
 
 LogProtoServer *log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options);
