@@ -192,24 +192,45 @@ _log_proto_proxied_text_server_add_aux_data(LogProtoProxiedTextServer *self, Log
 static inline LogProtoStatus
 _fetch_into_proxy_buffer(LogProtoProxiedTextServer *self, gsize *hdr_len)
 {
-  for(gint i = 0; i < PROXY_PROTO_HDR_MAX_LEN; i++)
+  while(self->proxy_header_buff_len < PROXY_PROTO_HDR_MAX_LEN)
     {
-      gssize rc = log_transport_read(self->super.super.super.transport, &(self->v1_proxy_header_buff[i]), sizeof(gchar),
-                                     NULL);
-      if(rc > 0)
+      gssize rc = log_transport_read(self->super.super.super.transport,
+                                     &(self->proxy_header_buff[self->proxy_header_buff_len]),
+                                     sizeof(gchar), NULL);
+      if(rc < 0)
         {
-          self->v1_proxy_header_buff[i+1] = '\0';
-          *hdr_len = i+1;
-          if (self->v1_proxy_header_buff[i] == '\n')
+          if (errno == EAGAIN)
+            return LPS_AGAIN;
+          else
             {
-              return LPS_SUCCESS;
+              msg_error("I/O error occurred while reading proxy header", evt_tag_int(EVT_TAG_FD,
+                        self->super.super.super.transport->fd),
+                        evt_tag_error(EVT_TAG_OSERROR));
+              return LPS_ERROR;
             }
         }
-      else if(rc == 0)
+
+      if(rc == 0)
         {
-          return LPS_AGAIN;
+          msg_trace("EOF occurred while reading proxy header", evt_tag_int(EVT_TAG_FD, self->super.super.super.transport->fd));
+          return LPS_EOF;
         }
+
+      self->proxy_header_buff_len++;
+      self->proxy_header_buff[self->proxy_header_buff_len] = '\0';
+      if (self->proxy_header_buff[self->proxy_header_buff_len - 1] == '\n')
+        {
+          *hdr_len = self->proxy_header_buff_len;
+          return LPS_SUCCESS;
+        }
+
     }
+
+  msg_error("PROXY proto header with invalid header length",
+            evt_tag_int("max_parsable_length", PROXY_PROTO_HDR_MAX_LEN),
+            evt_tag_int("max_length_by_spec", PROXY_PROTO_HDR_MAX_LEN_RFC),
+            evt_tag_long("length", self->proxy_header_buff_len),
+            evt_tag_str("header", (const gchar *)self->proxy_header_buff));
   return LPS_ERROR;
 }
 
@@ -239,13 +260,13 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
   if(self->has_to_switch_to_tls)
     {
       status = _fetch_into_proxy_buffer(self, &msg_len);
-      msg = self->v1_proxy_header_buff;
+      msg = self->proxy_header_buff;
     }
   else
     {
       status = log_proto_buffered_server_fetch(&self->super.super.super, &msg, &msg_len, &may_read, NULL, NULL);
     }
-  self->handshake_done = (status == LPS_SUCCESS && !self->has_to_switch_to_tls);
+  self->handshake_done = (status == LPS_SUCCESS);
   if (status != LPS_SUCCESS)
     return status;
 
@@ -260,7 +281,6 @@ _log_proto_proxied_text_server_handshake(LogProtoServer *s)
       if (self->has_to_switch_to_tls)
         {
           _log_proto_proxied_text_server_switch_to_tls(self);
-          self->has_to_switch_to_tls = FALSE;
           self->handshake_done = TRUE;
         }
       return LPS_SUCCESS;
@@ -276,7 +296,7 @@ static gboolean
 _log_proto_proxied_text_server_handshake_in_progress(LogProtoServer *s)
 {
   LogProtoProxiedTextServer *self = (LogProtoProxiedTextServer *) s;
-  return !self->handshake_done || self->has_to_switch_to_tls;
+  return !self->handshake_done;
 }
 
 static LogProtoStatus
