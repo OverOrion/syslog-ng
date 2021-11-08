@@ -184,34 +184,44 @@ Test(log_proto, test_proxy_protocol_aux_data)
 }
 
 
-Test(log_proto, test_proxy_protocol_header_partial_read)
+static void
+assert_handshake_is_taking_place(LogProtoServer *proto)
 {
-  LogTransport *transport = log_transport_mock_records_new("P", -1, LTM_INJECT_ERROR(EAGAIN),
-                                                           "ROXY TCP4 ", -1, LTM_INJECT_ERROR(EAGAIN),
-                                                           "1.1.1.1 ", -1, LTM_INJECT_ERROR(EAGAIN),
-                                                           "2.2.2.2 3333 ", -1, LTM_INJECT_ERROR(EAGAIN),
-                                                           "4444\r\n", -1, LTM_INJECT_ERROR(EAGAIN),
-                                                           "test message\n", -1,
-                                                           LTM_EOF);
-  LogProtoServer *proto = log_proto_proxied_text_server_new(transport, get_inited_proto_server_options());
-
-
   gint timeout;
   GIOCondition cond;
+
 
   cr_assert_eq(log_proto_server_prepare(proto, &cond, &timeout), LPPA_POLL_IO);
   cr_assert_eq(cond, G_IO_IN);
 
   cr_assert(log_proto_server_handshake_in_progress(proto));
-  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
 
-  cr_assert(log_proto_server_handshake_in_progress(proto));
-  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
-  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
-  cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+}
+
+Test(log_proto, test_proxy_protocol_header_partial_read)
+{
+  LogTransportMock *transport = (LogTransportMock *) log_transport_mock_records_new(LTM_EOF);
+  const char *proxy_header_segments[] = {"P", "ROXY TCP4 ", "1.1.1.1 ", "2.2.2.2 3333 ", "4444\r\n"};
+  size_t length = G_N_ELEMENTS(proxy_header_segments);
+
+  for(size_t i = 0; i < length; i++)
+    {
+      log_transport_mock_inject_data(transport, proxy_header_segments[i], -1);
+      log_transport_mock_inject_data(transport, LTM_INJECT_ERROR(EAGAIN));
+    }
+
+  log_transport_mock_inject_data(transport, "test message\n", -1);
+
+  LogProtoServer *proto = log_proto_proxied_text_server_new((LogTransport *) transport,
+                                                            get_inited_proto_server_options());
+
+  for(size_t i = 0; i < length - 1; i++)
+    {
+      assert_handshake_is_taking_place(proto);
+      cr_assert_eq(log_proto_server_handshake(proto), LPS_AGAIN);
+    }
 
   cr_assert_eq(log_proto_server_handshake(proto), LPS_SUCCESS);
-
   cr_assert_not(log_proto_server_handshake_in_progress(proto));
 
 
