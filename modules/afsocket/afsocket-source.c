@@ -779,8 +779,7 @@ afsocket_sd_setup_transport(AFSocketSourceDriver *self)
       return FALSE;
     }
 
-  if(!self->transport_mapper->create_multitransport)
-    self->transport_mapper->create_multitransport = self->proto_factory->use_multitransport;
+  self->transport_mapper->create_multitransport = self->proto_factory->use_multitransport;
 
   afsocket_sd_setup_reader_options(self);
   return TRUE;
