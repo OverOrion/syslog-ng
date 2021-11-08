@@ -185,9 +185,9 @@ Test(log_proto, test_proxy_protocol_aux_data)
 Test(log_proto, test_proxy_protocol_header_partial_read)
 {
   LogTransport *transport = log_transport_mock_records_new("P", -1,
-                                                           "ROXY TCP4", -1,
+                                                           "ROXY TCP4 ", -1,
                                                            "1.1.1.1", -1,
-                                                           "2.2.2.2 3333", -1,
+                                                           "2.2.2.2 3333 ", -1,
                                                            "4444\r\n", -1,
                                                            "test message\n", -1,
                                                            LTM_EOF);
