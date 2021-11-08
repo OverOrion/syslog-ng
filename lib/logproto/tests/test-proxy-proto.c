@@ -28,6 +28,8 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 
+#include <errno.h>
+
 typedef struct
 {
   const gchar *proxy_header;
@@ -184,11 +186,11 @@ Test(log_proto, test_proxy_protocol_aux_data)
 
 Test(log_proto, test_proxy_protocol_header_partial_read)
 {
-  LogTransport *transport = log_transport_mock_records_new("P", -1,
-                                                           "ROXY TCP4 ", -1,
-                                                           "1.1.1.1", -1,
-                                                           "2.2.2.2 3333 ", -1,
-                                                           "4444\r\n", -1,
+  LogTransport *transport = log_transport_mock_records_new("P", -1, LTM_INJECT_ERROR(EAGAIN),
+                                                           "ROXY TCP4 ", -1, LTM_INJECT_ERROR(EAGAIN),
+                                                           "1.1.1.1 ", -1, LTM_INJECT_ERROR(EAGAIN),
+                                                           "2.2.2.2 3333 ", -1, LTM_INJECT_ERROR(EAGAIN),
+                                                           "4444\r\n", -1, LTM_INJECT_ERROR(EAGAIN),
                                                            "test message\n", -1,
                                                            LTM_EOF);
   LogProtoServer *proto = log_proto_proxied_text_server_new(transport, get_inited_proto_server_options());
