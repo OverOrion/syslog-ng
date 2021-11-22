@@ -45,7 +45,9 @@ struct _TLSContext
   TLSMode mode;
   gint verify_mode;
   gchar *key_file;
-  gchar *keylog_file;
+  gchar *keylog_file_path;
+  FILE *keylog_file;
+  GStaticMutex keylog_file_lock;
   gchar *cert_file;
   gchar *dhparam_file;
   gchar *pkcs12_file;
@@ -63,6 +65,8 @@ struct _TLSContext
 };
 
 #define _TLS_KEYLOG_INDEX 0
+#define _TLS_KEYLOG_FILE 1
+#define _TLS_KEYLOG_FILE_LOCK 2
 
 typedef enum
 {
@@ -338,6 +342,58 @@ _set_sni_in_client_mode(TLSSession *self)
   return FALSE;
 }
 
+void _write_line_to_keylog_file(const char *file_path, const char *line, FILE *keylog_file, GStaticMutex *mutex)
+{
+  gint ret_val;
+  g_static_mutex_lock(mutex);
+  if(keylog_file)
+    {
+      ret_val = fprintf(keylog_file, "%s\n", line);
+      if (ret_val != strlen(line))
+        {
+          msg_error("Couldn't write to TLS keylogfile", evt_tag_errno("error", ret_val));
+        }
+      fclose(keylog_file);
+    }
+  else
+    {
+      msg_error("Error opening keylog-file",
+                evt_tag_str(EVT_TAG_FILENAME, file_path),
+                evt_tag_error(EVT_TAG_OSERROR));
+      return;
+    }
+  g_static_mutex_unlock(mutex);
+}
+
+static inline void
+_dump_tls_keylog(const SSL *ssl, const char *line)
+{
+  if(ssl != NULL)
+    {
+      const char *file_path = SSL_get_ex_data(ssl, _TLS_KEYLOG_INDEX);
+      GStaticMutex *file_lock = SSL_get_ex_data(ssl, _TLS_KEYLOG_FILE_LOCK);
+      FILE *file = SSL_get_ex_data(ssl, _TLS_KEYLOG_FILE);
+      _write_line_to_keylog_file(file_path, line, file, file_lock);
+    }
+}
+
+static gboolean
+tls_session_keylog_setup_file_and_lock(TLSSession *self, TLSContext *ctx)
+{
+  self->ctx->keylog_file = fopen(ctx->keylog_file_path, "a");
+  if(!self->ctx->keylog_file)
+    {
+      msg_error("Error opening keylog-file",
+                evt_tag_str(EVT_TAG_FILENAME, ctx->keylog_file_path),
+                evt_tag_error(EVT_TAG_OSERROR));
+      return FALSE;
+    }
+  return openssl_setup_keylog_file(self->ssl,
+                                   _TLS_KEYLOG_FILE, self->ctx->keylog_file,
+                                   _TLS_KEYLOG_FILE_LOCK, &self->ctx->keylog_file_lock);
+
+}
+
 static TLSSession *
 tls_session_new(SSL *ssl, TLSContext *ctx)
 {
@@ -356,6 +412,16 @@ tls_session_new(SSL *ssl, TLSContext *ctx)
       tls_context_unref(self->ctx);
       g_free(self);
       return NULL;
+    }
+  if(ctx->keylog_file_path)
+    {
+      if(!tls_session_keylog_setup_file_and_lock(self, self->ctx))
+        {
+          tls_context_unref(self->ctx);
+          g_free(self);
+          return NULL;
+        }
+      SSL_CTX_set_keylog_callback(SSL_get_SSL_CTX(self->ssl), _dump_tls_keylog);
     }
 
   return self;
@@ -700,43 +766,6 @@ tls_context_load_key_and_cert(TLSContext *self)
   return TLS_CONTEXT_OK;
 }
 
-static void _write_line_to_keylog_file_mutex(const char *file_path, const char *line)
-{
-  FILE *keylog_file;
-  gint ret_val;
-  static GStaticMutex mutex;
-  g_static_mutex_lock(&mutex);
-  keylog_file = fopen(file_path, "a");
-  if(keylog_file)
-    {
-      ret_val = fprintf(keylog_file, "%s\n", line);
-      if (ret_val != strlen(line))
-        {
-          msg_error("Couldn't write to TLS keylogfile", evt_tag_errno("error", ret_val));
-        }
-      fclose(keylog_file);
-    }
-  else
-    {
-      msg_error("Error opening keylog-file",
-                evt_tag_str(EVT_TAG_FILENAME, file_path),
-                evt_tag_error(EVT_TAG_OSERROR));
-      return;
-    }
-  g_static_mutex_unlock(&mutex);
-}
-
-static inline void
-_dump_tls_keylog(const SSL *ssl, const char *line)
-{
-  if(ssl == NULL)
-    {
-      return;
-    }
-  const char *file_path = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), _TLS_KEYLOG_INDEX);
-  _write_line_to_keylog_file_mutex(file_path, line);
-}
-
 TLSContextSetupResult
 tls_context_setup_context(TLSContext *self)
 {
@@ -1040,18 +1069,17 @@ tls_context_set_key_file(TLSContext *self, const gchar *key_file)
 }
 
 gboolean
-tls_context_set_keylog_file(TLSContext *self, const gchar *keylog_file)
+tls_context_set_keylog_file(TLSContext *self, gchar *keylog_file_path)
 {
-  g_free(self->keylog_file);
+  g_free(self->keylog_file_path);
   msg_warning_once("WARNING: TLS keylog file has been set up, it should only be used during debugging sessions, NOT in production environments",
-                   evt_tag_str("keylog-file", keylog_file));
-  self->keylog_file = g_strdup(keylog_file);
-  if(self->keylog_file)
-    {
-      openssl_setup_keylog_file(self->ssl_ctx, _dump_tls_keylog, _TLS_KEYLOG_INDEX, self->keylog_file);
-    }
-  gchar *ret_val = SSL_CTX_get_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX);
-  return ret_val == NULL;
+                   evt_tag_str("keylog-file", keylog_file_path));
+  self->keylog_file_path = g_strdup(keylog_file_path);
+
+  if(self->keylog_file_path)
+    return SSL_CTX_set_ex_data(self->ssl_ctx, _TLS_KEYLOG_INDEX, keylog_file_path);
+
+  return FALSE;
 }
 
 void
