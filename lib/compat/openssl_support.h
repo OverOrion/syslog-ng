@@ -66,7 +66,7 @@ void openssl_ctx_setup_session_tickets(SSL_CTX *ctx);
 
 void openssl_ctx_setup_ecdh(SSL_CTX *ctx);
 
-void openssl_setup_keylog_file(SSL_CTX *ctx, void *cb, int idx, void *keylog_file);
+int openssl_setup_keylog_file(SSL *s, int idx1, FILE *file, int idx2, void *file_lock);
 
 void openssl_init(void);
 void openssl_crypto_init_threading(void);

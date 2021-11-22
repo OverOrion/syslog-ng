@@ -239,16 +239,14 @@ openssl_ctx_setup_session_tickets(SSL_CTX *ctx)
 #endif
 }
 
-void
-openssl_setup_keylog_file(SSL_CTX *ctx, void *cb, int idx, void *keylog_file)
+int
+openssl_setup_keylog_file(SSL *s, int idx1, FILE *file, int idx2, void *file_lock)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-  {
-    SSL_CTX_set_ex_data(ctx, idx, keylog_file);
-    SSL_CTX_set_keylog_callback(ctx, cb);
-  }
+  if(SSL_set_ex_data(s, idx1, file) && SSL_set_ex_data(s, idx2, file_lock))
+    return 1;
+  return 0;
 #else
-  return;
+  return 0;
 #endif
-
 }
