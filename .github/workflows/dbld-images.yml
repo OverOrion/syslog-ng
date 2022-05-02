@@ -70,7 +70,7 @@ jobs:
           then
             UPLOAD_IMAGES_INTERNAL="true"
           else
-            UPLOAD_IMAGES_INTERNAL="false"
+            UPLOAD_IMAGES_INTERNAL="true"
           fi
 
           . .github/workflows/gh-tools.sh
