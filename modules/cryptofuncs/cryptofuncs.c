@@ -30,6 +30,9 @@
 #include "compat/openssl_support.h"
 #include <openssl/evp.h>
 
+
+#include <openssl/err.h>
+
 static void
 tf_uuid(LogMessage *msg, gint argc, GString *argv[], GString *result, LogMessageValueType *type)
 {
@@ -114,7 +117,12 @@ _hash(const EVP_MD *md, GString *const *argv, gint argc, guchar *hash, guint has
   guint md_len;
   DECLARE_EVP_MD_CTX(mdctx);
   EVP_MD_CTX_init(mdctx);
-  EVP_DigestInit_ex(mdctx, md, NULL);
+  if (EVP_DigestInit_ex(mdctx, md, NULL) != 1)
+    {
+int ssl_error = ERR_get_error();
+        printf("EVP_DigestSignInit failed, error 0x%lx\n", ssl_error);
+	  printf("\nerror: %s, %s, %s\n", ERR_lib_error_string(ssl_error), ERR_func_error_string(ssl_error), ERR_reason_error_string(ssl_error));
+    }
 
   for (i = 0; i < argc; i++)
     {
