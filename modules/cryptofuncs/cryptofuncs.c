@@ -173,7 +173,9 @@ static Plugin cryptofuncs_plugins[] =
   TEMPLATE_FUNCTION_PLUGIN(tf_hash, "sha1"),
   TEMPLATE_FUNCTION_PLUGIN(tf_hash, "sha256"),
   TEMPLATE_FUNCTION_PLUGIN(tf_hash, "sha512"),
+#ifdef SYSLOG_NG_HAVE_DECL_DIGEST_MD4
   TEMPLATE_FUNCTION_PLUGIN(tf_hash, "md4"),
+#endif
   TEMPLATE_FUNCTION_PLUGIN(tf_hash, "md5"),
 };
 
