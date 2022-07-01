@@ -22,7 +22,7 @@ jobs:
         run: |
           . .github/workflows/gh-tools.sh
 
-          NEWS_FILES=$(git diff --compact-summary --name-only origin/master | grep -E "news\/.*\.md")
+          NEWS_FILES=$(git diff --name-only origin/${{ github.base_ref}}..HEAD | grep -E "news\/.*\.md")
 
           gh_export NEWS_FILES
 
@@ -30,7 +30,7 @@ jobs:
         if: env.NEWS_FILES != ''
         run: |
           COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
-          COMMENT="No news file has been detected. Please write it, if applicable"
+          COMMENT="No news file has been detected. Please write it, if applicable."
 
           hub api \
             ${COMMENT_ENDPOINT} \
