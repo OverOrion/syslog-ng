@@ -1,0 +1,32 @@
+##################################################################################
+# If a new PR is opened and it lacks news file, then give them a gentle reminder.#
+##################################################################################
+
+name: Comment on missing news file
+
+on:
+  pull_request_target:
+    types: [opened]
+    paths-ignore:
+      - 'news/**.md'
+
+jobs:
+  comment-on-missing-news-file:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout syslog-ng source
+        uses: actions/checkout@v2
+
+      - name: Comment
+        run: |
+          . .github/workflows/gh-tools.sh
+
+          COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
+          COMMENT="No news file has been detected. Please write one, if applicable."
+
+          hub api \
+            ${COMMENT_ENDPOINT} \
+            --field body="${COMMENT}"
+
