@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout syslog-ng source
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
       - name: Check if a news file (or more) has been created
         run: |
