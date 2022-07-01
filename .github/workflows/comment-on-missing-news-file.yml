@@ -22,6 +22,7 @@ jobs:
         run: |
           . .github/workflows/gh-tools.sh
 
+          echo $(pwd)
           NEWS_FILES=$(git diff --name-only origin/${{ github.base_ref }} origin/${{ github.head_ref }} | grep -E "news\/.*\.md")
 
           gh_export NEWS_FILES
