@@ -17,15 +17,15 @@ jobs:
     steps:
       - name: Checkout syslog-ng source
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 1
 
       - name: Check if a news file (or more) has been created
         run: |
           . .github/workflows/gh-tools.sh
 
           echo $(pwd)
-          NEWS_FILES=$(git diff --name-only origin/${{ github.base_ref }} origin/${{ github.head_ref }} | grep -E "news\/.*\.md")
+          git fetch origin master ${{ github.event.pull_request.base.sha }}
+          git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }}
+          NEWS_FILES=$(git diff --name-only github.event.pull_request.base.sha ${{ github.sha }} | grep -E "news\/.*\.md")
 
           gh_export NEWS_FILES
 
