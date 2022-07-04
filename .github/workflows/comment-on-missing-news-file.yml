@@ -7,6 +7,8 @@ name: Comment on missing news file
 on:
   pull_request_target:
     types: [opened]
+    paths-ignore:
+      - 'news/**.md'
 
 jobs:
   comment-on-missing-news-file:
@@ -16,22 +18,13 @@ jobs:
     steps:
       - name: Checkout syslog-ng source
         uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
 
-      - name: Check if a news file (or more) has been created
+      - name: Comment
         run: |
           . .github/workflows/gh-tools.sh
 
-          NEWS_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -E "news\/.*\.md")
-
-          gh_export NEWS_FILES
-
-      - name: Comment
-        if: env.NEWS_FILES == ''
-        run: |
           COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
-          COMMENT="No `news file` has been detected. Please write it, if applicable."
+          COMMENT="No news file has been detected. Please write it, if applicable."
 
           hub api \
             ${COMMENT_ENDPOINT} \
