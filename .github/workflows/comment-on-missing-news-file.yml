@@ -25,7 +25,7 @@ jobs:
           echo $(pwd)
           git fetch origin master ${{ github.event.pull_request.base.sha }}
           git diff ${{ github.event.pull_request.base.sha }} ${{ github.sha }}
-          NEWS_FILES=$(git diff --name-only github.event.pull_request.base.sha ${{ github.sha }} | grep -E "news\/.*\.md")
+          NEWS_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | grep -E "news\/.*\.md")
 
           gh_export NEWS_FILES
 
