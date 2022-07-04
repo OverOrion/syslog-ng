@@ -30,7 +30,7 @@ jobs:
           gh_export NEWS_FILES
 
       - name: Comment
-        if: env.NEWS_FILES != ''
+        if: env.NEWS_FILES == ''
         run: |
           COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
           COMMENT="No news file has been detected. Please write it, if applicable."
