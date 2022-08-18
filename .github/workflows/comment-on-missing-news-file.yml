@@ -12,8 +12,6 @@ on:
   # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
   pull_request_target:
     types: [opened]
-    paths-ignore:
-      - 'news/*-*.md'
 
 jobs:
   comment-on-missing-news-file:
@@ -27,10 +25,14 @@ jobs:
     steps:
       - name: Comment
         run: |
-          COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
-          COMMENT="No news file has been detected. Please write one, if applicable."
+          NEWS_DIR_MODIFIED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "news\/.*\.md" | wc -l)
+          if [ ${NEWS_DIR_MODIFIED} -eq 0 ]
+          then
+            COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
+            COMMENT="No news file has been detected. Please write one, if applicable."
 
-          hub api \
-            ${COMMENT_ENDPOINT} \
-            --field body="${COMMENT}"
+            hub api \
+              ${COMMENT_ENDPOINT} \
+              --field body="${COMMENT}"
+          fi
 
