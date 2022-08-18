@@ -8,11 +8,10 @@ on:
 
 jobs:
   general:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-22.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
-      options: --privileged --ulimit core=-1
-
+      options: --security-opt seccomp=unconfined --privileged --ulimit core=-1
     strategy:
       matrix:
         build-tool: [autotools, cmake]
@@ -144,7 +143,7 @@ jobs:
           path: ${{ env.COREFILES_DIR }}
 
   distcheck:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
 
@@ -184,7 +183,7 @@ jobs:
           exec_prop_check "make distcheck -j 3 V=1"
 
   style-check:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
 
@@ -240,7 +239,7 @@ jobs:
           path: light-style-problems.diff
 
   copyright-check:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
       env:
@@ -261,7 +260,7 @@ jobs:
           path: copyright-run.log
 
   commits-check:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
 
