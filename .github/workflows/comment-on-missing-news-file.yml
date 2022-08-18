@@ -12,8 +12,6 @@ on:
   # See: https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
   pull_request_target:
     types: [opened]
-    paths-ignore:
-      - 'news/*-*.md'
 
 jobs:
   comment-on-missing-news-file:
@@ -25,12 +23,22 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Comment
+      - name: Checkout syslog-ng source
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Check if news directory has been modified
         run: |
-          COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
-          COMMENT="No news file has been detected. Please write one, if applicable."
+          . .github/workflows/gh-tools.sh
+          NEWS_DIR_MODIFIED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "news\/.*\.md" | wc -l)
 
-          hub api \
-            ${COMMENT_ENDPOINT} \
-            --field body="${COMMENT}"
+      - name: Comment
+        if: env.NEWS_DIR_MODIFIED == ''
+        run: |
+            COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
+            COMMENT="No news file has been detected. Please write one, if applicable."
 
+            hub api \
+              ${COMMENT_ENDPOINT} \
+              --field body="${COMMENT}"
