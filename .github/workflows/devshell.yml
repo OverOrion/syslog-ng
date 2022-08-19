@@ -146,6 +146,7 @@ jobs:
     runs-on: ubuntu-20.04
     container:
       image: ghcr.io/syslog-ng/dbld-devshell:latest
+      options: --security-opt seccomp=unconfined --privileged --ulimit core=-1
 
     steps:
       - name: Checkout syslog-ng source
