@@ -31,7 +31,7 @@ jobs:
       - name: Comment
         run: |
           NEWS_DIR_MODIFIED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "news\/.*\.md" | wc -l)
-          if [ ${NEWS_DIR_MODIFIED} -eq 0 ]
+          if [[ ${NEWS_DIR_MODIFIED} -eq 0 ]]
           then
             COMMENT_ENDPOINT=repos/${{ github.repository_owner }}/syslog-ng/issues/${{ github.event.number }}/comments
             COMMENT="No news file has been detected. Please write one, if applicable."
