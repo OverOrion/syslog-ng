@@ -23,6 +23,11 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Checkout syslog-ng source
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
       - name: Comment
         run: |
           NEWS_DIR_MODIFIED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "news\/.*\.md" | wc -l)
