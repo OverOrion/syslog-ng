@@ -32,6 +32,7 @@ jobs:
         run: |
           . .github/workflows/gh-tools.sh
           NEWS_DIR_MODIFIED=$(git diff --name-only origin/${{ github.base_ref }}..HEAD | grep -E "news\/.*\.md") || true
+          echo "${NEWS_DIR_MODIFIED}"
           gh_export NEWS_DIR_MODIFIED
 
       - name: Comment
